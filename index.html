@@ -3,610 +3,1436 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mancala</title>
+<title>Mancala — Custom</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --sand:    #C9A96E;
-    --clay:    #7B4F2E;
-    --dark:    #2A1A0E;
-    --board:   #5C3317;
-    --pocket:  #3D200D;
-    --stone1:  #8B8680;
-    --stone2:  #6B6560;
-    --stone3:  #A09890;
-    --glow:    #E8C87A;
-    --sky:     #1A0F06;
-    --light:   #F2E4C4;
-    --muted:   #A08060;
-  }
+:root {
+  --bg:        #130D07;
+  --board:     #4A2810;
+  --board-hi:  #5E3418;
+  --pocket:    #2C1608;
+  --store-bg:  #200E04;
+  --sand:      #C8A96A;
+  --gold:      #E2C87A;
+  --clay:      #7B4F2E;
+  --rust:      #9B5C30;
+  --light:     #EDE0C4;
+  --muted:     #8A7060;
+  --dim:       #4A3828;
+  --panel:     #1C1008;
+  --panel-bd:  #3A2010;
+  --toggle-on: #8B6030;
+  --green:     #5A8A50;
+  --red:       #8A4040;
+  --stone-a:   #7A7268;
+  --stone-b:   #5C5650;
+  --stone-c:   #9A9088;
+}
 
-  body {
-    background: var(--sky);
-    font-family: 'Lato', sans-serif;
-    color: var(--light);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background-image:
-      radial-gradient(ellipse at 20% 80%, rgba(90,50,20,0.4) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, rgba(60,30,10,0.3) 0%, transparent 50%);
-  }
+html { scroll-behavior: smooth; }
 
-  h1 {
-    font-family: 'Cinzel', serif;
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    letter-spacing: 0.15em;
-    color: var(--sand);
-    text-align: center;
-    margin-bottom: 4px;
-    text-shadow: 0 0 40px rgba(201,169,110,0.4);
-  }
+body {
+  background: var(--bg);
+  font-family: 'Inter', sans-serif;
+  color: var(--light);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 48px;
+}
 
-  .subtitle {
-    font-size: 0.8rem;
-    letter-spacing: 0.3em;
-    color: var(--muted);
-    text-align: center;
-    margin-bottom: 30px;
-    text-transform: uppercase;
-  }
+/* ── HEADER ─────────────────────────────────────── */
+.site-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 32px;
+  width: 100%;
+  max-width: 900px;
+  justify-content: center;
+}
+h1 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 700;
+  color: var(--sand);
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 60px rgba(200,169,106,0.3);
+}
+.tagline {
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+  font-weight: 300;
+  text-transform: uppercase;
+}
 
-  /* STATUS BAR */
-  #status-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    margin-bottom: 24px;
-    min-height: 36px;
-  }
+/* ── LAYOUT ─────────────────────────────────────── */
+.app-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 28px;
+  width: 100%;
+  max-width: 1100px;
+  align-items: start;
+}
 
-  #status-text {
-    font-size: 0.95rem;
-    color: var(--light);
-    letter-spacing: 0.05em;
-    transition: opacity 0.3s;
-  }
+@media (max-width: 800px) {
+  .app-layout { grid-template-columns: 1fr; }
+}
 
-  #status-text.ai-turn { color: var(--muted); font-style: italic; }
-  #status-text.player-turn { color: var(--glow); }
-  #status-text.game-over { color: var(--sand); font-weight: 700; font-size: 1.1rem; }
+/* ── SETTINGS PANEL ─────────────────────────────── */
+.settings-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-bd);
+  border-radius: 16px;
+  overflow: hidden;
+  position: sticky;
+  top: 24px;
+}
 
-  /* BOARD */
-  .board-wrapper {
-    position: relative;
-    background: linear-gradient(145deg, #6B3A1F, #4A2410, #5C3317);
-    border-radius: 120px;
-    padding: 28px 24px;
-    box-shadow:
-      0 20px 60px rgba(0,0,0,0.7),
-      inset 0 2px 0 rgba(255,255,255,0.08),
-      inset 0 -2px 0 rgba(0,0,0,0.3),
-      0 0 0 3px var(--clay),
-      0 0 0 6px #2A1000;
-  }
+.settings-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--panel-bd);
+}
+.settings-head h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--sand);
+  letter-spacing: 0.12em;
+}
+.settings-head p {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 3px;
+  line-height: 1.5;
+}
 
-  .board-inner {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 14px;
-    align-items: center;
-  }
+/* Presets */
+.presets-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--panel-bd);
+}
+.preset-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-bd);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+  text-align: center;
+  line-height: 1.3;
+}
+.preset-btn .preset-name { display: block; color: var(--light); font-size: 0.72rem; }
+.preset-btn .preset-sub  { display: block; font-size: 0.62rem; color: var(--muted); margin-top: 1px; }
+.preset-btn:hover, .preset-btn.active {
+  border-color: var(--clay);
+  background: rgba(123,79,46,0.25);
+  color: var(--light);
+}
+.preset-btn.active { border-color: var(--sand); background: rgba(123,79,46,0.35); }
 
-  /* Player labels */
-  .label {
-    font-family: 'Cinzel', serif;
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    color: var(--muted);
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    padding: 0 4px;
-  }
-  .label.ai-label { transform: rotate(180deg); }
+/* Sections inside settings */
+.settings-body {
+  padding: 4px 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dim) transparent;
+}
 
-  /* MANCALA STORES */
-  .store {
-    width: 80px;
-    height: 160px;
-    background: radial-gradient(ellipse at 50% 30%, #2A1000, var(--pocket));
-    border-radius: 60px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid rgba(201,169,110,0.25);
-    box-shadow: inset 0 4px 20px rgba(0,0,0,0.5), 0 2px 0 rgba(255,255,255,0.05);
-    position: relative;
-    gap: 4px;
-  }
+.settings-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(58,32,16,0.5);
+}
+.settings-section:last-child { border-bottom: none; }
 
-  .store-count {
-    font-family: 'Cinzel', serif;
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--glow);
-    line-height: 1;
-  }
+.section-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
 
-  .store-label {
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
+/* Advanced toggle */
+.advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-top: 1px solid var(--panel-bd);
+  font-size: 0.72rem;
+  color: var(--muted);
+  transition: color 0.2s;
+  user-select: none;
+}
+.advanced-toggle:hover { color: var(--sand); }
+.advanced-toggle .chevron { font-size: 0.6rem; transition: transform 0.2s; }
+.advanced-toggle.open .chevron { transform: rotate(90deg); }
+.advanced-section { display: none; }
+.advanced-section.open { display: block; }
 
-  /* POCKETS ROW */
-  .pockets-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
+/* Controls */
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.ctrl-row:last-child { margin-bottom: 0; }
 
-  .pockets-row {
-    display: flex;
-    gap: 10px;
-  }
+.ctrl-label {
+  font-size: 0.72rem;
+  color: var(--light);
+  flex: 1;
+  line-height: 1.3;
+}
+.ctrl-hint {
+  font-size: 0.62rem;
+  color: var(--muted);
+  margin-top: 1px;
+  display: block;
+}
 
-  .pocket {
-    width: 72px;
-    height: 72px;
-    background: radial-gradient(ellipse at 50% 35%, #3A1A08, var(--pocket));
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    border: 2px solid transparent;
-    box-shadow: inset 0 3px 12px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04);
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
-    position: relative;
-    overflow: visible;
-  }
+/* Slider */
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.slider-val {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  color: var(--gold);
+  min-width: 20px;
+  text-align: right;
+}
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 90px;
+  height: 3px;
+  background: var(--dim);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--sand);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+input[type=range]::-webkit-slider-thumb:hover { background: var(--gold); }
 
-  .pocket.playable {
-    border-color: rgba(201,169,110,0.5);
-    box-shadow: inset 0 3px 12px rgba(0,0,0,0.4), 0 0 16px rgba(201,169,110,0.2);
-  }
+/* Toggle switch */
+.toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--dim);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle input:checked + .toggle-track { background: var(--toggle-on); }
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  background: var(--muted);
+  border-radius: 50%;
+  transition: transform 0.2s, background 0.2s;
+  pointer-events: none;
+}
+.toggle input:checked ~ .toggle-thumb {
+  transform: translateX(16px);
+  background: var(--sand);
+}
 
-  .pocket.playable:hover {
-    border-color: var(--glow);
-    box-shadow: inset 0 3px 12px rgba(0,0,0,0.3), 0 0 24px rgba(232,200,122,0.4);
-    transform: translateY(-2px);
-  }
+/* Select */
+select {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  background: var(--pocket);
+  color: var(--light);
+  border: 1px solid var(--panel-bd);
+  border-radius: 7px;
+  padding: 5px 8px;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  max-width: 130px;
+}
+select:focus { border-color: var(--clay); }
 
-  .pocket.empty { cursor: default; }
+/* ── GAME AREA ───────────────────────────────────── */
+.game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
 
-  .pocket-num {
-    font-family: 'Cinzel', serif;
-    font-size: 1.2rem;
-    color: var(--light);
-    font-weight: 700;
-    position: relative;
-    z-index: 2;
-    pointer-events: none;
-  }
+/* ── STATUS BAR ─────────────────────────────────── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 860px;
+  padding: 0 4px;
+}
+#status-text {
+  font-size: 0.88rem;
+  color: var(--light);
+  letter-spacing: 0.04em;
+  transition: color 0.3s;
+  min-height: 22px;
+}
+#status-text.ai-turn   { color: var(--muted); font-style: italic; }
+#status-text.your-turn { color: var(--gold); }
+#status-text.game-over { color: var(--sand); font-weight: 600; }
+#status-text.extra-turn { color: #A0C880; }
 
-  .pocket.empty .pocket-num { color: var(--muted); opacity: 0.4; font-size: 1rem; }
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.timer-badge {
+  display: none;
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  color: var(--gold);
+  min-width: 28px;
+  text-align: right;
+}
+.timer-badge.urgent { color: #D07070; }
+.timer-badge.visible { display: block; }
 
-  /* Stone visual cluster */
-  .stones-visual {
-    position: absolute;
-    inset: 8px;
-    pointer-events: none;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.55;
-  }
+/* ── BOARD ───────────────────────────────────────── */
+.board-wrap {
+  background: linear-gradient(150deg, #5C3218 0%, #3C1E0A 50%, #4E2A12 100%);
+  border-radius: 999px;
+  padding: 24px 22px;
+  box-shadow:
+    0 24px 64px rgba(0,0,0,0.75),
+    inset 0 2px 0 rgba(255,255,255,0.07),
+    inset 0 -3px 0 rgba(0,0,0,0.4),
+    0 0 0 3px #5C3010,
+    0 0 0 6px #220E00;
+  transition: padding 0.3s;
+  max-width: 100%;
+  overflow-x: auto;
+}
 
-  .stone-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--stone2);
-    flex-shrink: 0;
-  }
+.board-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+}
 
-  .stone-dot:nth-child(3n)   { background: var(--stone1); }
-  .stone-dot:nth-child(3n+1) { background: var(--stone3); }
+/* ── STORES ──────────────────────────────────────── */
+.store {
+  width: 74px;
+  border-radius: 60px;
+  background: radial-gradient(ellipse at 50% 25%, #2A1000, var(--store-bg));
+  border: 2px solid rgba(200,169,106,0.2);
+  box-shadow: inset 0 5px 20px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: height 0.3s;
+}
+.store-count {
+  font-family: 'Cinzel', serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+}
+.store-lbl {
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
 
-  /* AI row is reversed for visual clarity */
-  #ai-row { flex-direction: row-reverse; }
+/* ── POCKETS GRID ────────────────────────────────── */
+.pockets-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pockets-row {
+  display: flex;
+  gap: 8px;
+}
+#ai-row { flex-direction: row-reverse; }
 
-  /* ANIMATION */
-  @keyframes pulse-pocket {
-    0%   { box-shadow: inset 0 3px 12px rgba(0,0,0,0.4), 0 0 10px rgba(232,200,122,0.3); }
-    50%  { box-shadow: inset 0 3px 12px rgba(0,0,0,0.4), 0 0 28px rgba(232,200,122,0.6); }
-    100% { box-shadow: inset 0 3px 12px rgba(0,0,0,0.4), 0 0 10px rgba(232,200,122,0.3); }
-  }
+.pocket {
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 30%, #3A1A06, var(--pocket));
+  border: 2px solid transparent;
+  box-shadow: inset 0 3px 12px rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.14s;
+  position: relative;
+  overflow: visible;
+  flex-shrink: 0;
+}
+.pocket.playable {
+  cursor: pointer;
+  border-color: rgba(200,169,106,0.45);
+  box-shadow: inset 0 3px 10px rgba(0,0,0,0.5), 0 0 14px rgba(200,169,106,0.18);
+}
+.pocket.playable:hover {
+  border-color: var(--gold);
+  box-shadow: inset 0 3px 10px rgba(0,0,0,0.4), 0 0 26px rgba(226,200,122,0.38);
+  transform: translateY(-3px);
+}
+.pocket.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pocket-num {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  color: var(--light);
+  font-weight: 600;
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+  user-select: none;
+}
+.pocket.empty .pocket-num { color: var(--dim); font-size: 0.85rem; }
 
-  .pocket.last-landed {
-    animation: pulse-pocket 0.8s ease-in-out 2;
-  }
+/* Stone clusters */
+.stones-vis {
+  position: absolute;
+  inset: 9px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 1;
+}
+.sdot {
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--stone-b);
+}
+.sdot:nth-child(3n)   { background: var(--stone-a); }
+.sdot:nth-child(3n+1) { background: var(--stone-c); }
 
-  /* CONTROLS */
-  .controls {
-    display: flex;
-    gap: 14px;
-    margin-top: 28px;
-    justify-content: center;
-    align-items: center;
-  }
+/* Last-landed glow */
+@keyframes landGlow {
+  0%   { box-shadow: inset 0 3px 10px rgba(0,0,0,0.4), 0 0 10px rgba(226,200,122,0.2); }
+  40%  { box-shadow: inset 0 3px 10px rgba(0,0,0,0.3), 0 0 30px rgba(226,200,122,0.6); }
+  100% { box-shadow: inset 0 3px 10px rgba(0,0,0,0.4), 0 0 10px rgba(226,200,122,0.2); }
+}
+.pocket.glow { animation: landGlow 0.7s ease-in-out 2; }
 
-  button {
-    font-family: 'Cinzel', serif;
-    font-size: 0.8rem;
-    letter-spacing: 0.12em;
-    padding: 10px 28px;
-    border: 1px solid var(--clay);
-    border-radius: 40px;
-    background: transparent;
-    color: var(--sand);
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s;
-  }
+/* ── CONTROLS BAR ────────────────────────────────── */
+.controls-bar {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
 
-  button:hover {
-    background: var(--clay);
-    color: var(--light);
-    border-color: var(--sand);
-  }
+.btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  padding: 9px 22px;
+  border-radius: 40px;
+  border: 1px solid var(--clay);
+  background: transparent;
+  color: var(--sand);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.btn:hover { background: var(--clay); color: var(--light); border-color: var(--sand); }
+.btn.primary { background: var(--clay); color: var(--light); border-color: var(--sand); }
+.btn.primary:hover { background: var(--sand); color: var(--bg); }
 
-  button.primary {
-    background: var(--clay);
-    color: var(--light);
-    border-color: var(--sand);
-  }
+/* ── SCORE SUMMARY ───────────────────────────────── */
+#score-summary {
+  display: none;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  color: var(--sand);
+  letter-spacing: 0.08em;
+  margin-top: -4px;
+}
+#score-summary .hl { color: var(--gold); font-size: 1.2rem; }
 
-  button.primary:hover {
-    background: var(--sand);
-    color: var(--dark);
-  }
+/* ── MOVE LOG ────────────────────────────────────── */
+.move-log-wrap {
+  width: 100%;
+  max-width: 860px;
+}
+.move-log-toggle {
+  font-size: 0.68rem;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  transition: color 0.2s;
+  user-select: none;
+}
+.move-log-toggle:hover { color: var(--sand); }
+#move-log {
+  display: none;
+  background: var(--panel);
+  border: 1px solid var(--panel-bd);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  max-height: 110px;
+  overflow-y: auto;
+  line-height: 1.8;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dim) transparent;
+}
+#move-log.open { display: block; }
 
-  /* RULES */
-  .rules-toggle {
-    margin-top: 20px;
-    text-align: center;
-    font-size: 0.75rem;
-    color: var(--muted);
-    cursor: pointer;
-    letter-spacing: 0.1em;
-    transition: color 0.2s;
-  }
-  .rules-toggle:hover { color: var(--sand); }
-
-  .rules-panel {
-    display: none;
-    max-width: 520px;
-    margin-top: 14px;
-    background: rgba(42,26,14,0.8);
-    border: 1px solid rgba(201,169,110,0.15);
-    border-radius: 12px;
-    padding: 20px 24px;
-    font-size: 0.8rem;
-    line-height: 1.8;
-    color: var(--muted);
-  }
-
-  .rules-panel.open { display: block; }
-  .rules-panel h3 {
-    font-family: 'Cinzel', serif;
-    color: var(--sand);
-    font-size: 0.85rem;
-    margin-bottom: 10px;
-    letter-spacing: 0.1em;
-  }
-
-  .rules-panel ul { padding-left: 18px; }
-  .rules-panel li { margin-bottom: 5px; }
-
-  /* Difficulty selector */
-  .diff-selector {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    font-size: 0.75rem;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-
-  .diff-btn {
-    font-family: 'Lato', sans-serif;
-    font-size: 0.7rem;
-    padding: 5px 14px;
-    border-radius: 20px;
-    letter-spacing: 0.08em;
-  }
-
-  .diff-btn.active {
-    background: var(--clay);
-    color: var(--light);
-    border-color: var(--sand);
-  }
-
-  /* Score summary on game over */
-  #score-summary {
-    display: none;
-    text-align: center;
-    margin-top: 16px;
-    font-family: 'Cinzel', serif;
-    font-size: 1rem;
-    color: var(--sand);
-    letter-spacing: 0.1em;
-  }
-  #score-summary span { color: var(--glow); }
+/* ── TOOLTIP ─────────────────────────────────────── */
+.has-tip { position: relative; cursor: help; border-bottom: 1px dotted var(--dim); }
+.has-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2A1A08;
+  border: 1px solid var(--panel-bd);
+  color: var(--light);
+  font-size: 0.65rem;
+  line-height: 1.5;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  max-width: 220px;
+  white-space: normal;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.has-tip:hover::after { opacity: 1; }
 </style>
 </head>
 <body>
 
-<h1>MANCALA</h1>
-<p class="subtitle">Ancient stones &mdash; modern mind</p>
+<header class="site-header">
+  <h1>MANCALA</h1>
+  <span class="tagline">Shape the rules — own the game</span>
+</header>
 
-<div id="status-bar">
-  <div id="status-text" class="player-turn">Your turn — pick a pocket</div>
-</div>
+<div class="app-layout">
 
-<div class="board-wrapper">
-  <div class="board-inner">
-    <!-- AI store (left on board = store 13) -->
-    <div class="store" id="store-ai">
-      <div class="store-count" id="store-ai-count">0</div>
-      <div class="store-label">AI</div>
+  <!-- ═══════════════════════════════════════════════
+       SETTINGS PANEL
+  ════════════════════════════════════════════════ -->
+  <aside class="settings-panel">
+    <div class="settings-head">
+      <h2>Game Setup</h2>
+      <p>Pick a preset or craft your own rules below.</p>
     </div>
 
-    <!-- Pockets -->
-    <div class="pockets-grid">
-      <!-- AI row (pockets 7–12, displayed right→left) -->
-      <div class="pockets-row" id="ai-row">
-        <div class="pocket" id="p7"  data-idx="7"  onclick="handleClick(7)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p8"  data-idx="8"  onclick="handleClick(8)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p9"  data-idx="9"  onclick="handleClick(9)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p10" data-idx="10" onclick="handleClick(10)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p11" data-idx="11" onclick="handleClick(11)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p12" data-idx="12" onclick="handleClick(12)"><span class="pocket-num"></span></div>
+    <!-- Presets -->
+    <div class="presets-row">
+      <button class="preset-btn active" id="pre-classic" onclick="applyPreset('classic')">
+        <span class="preset-name">Classic</span>
+        <span class="preset-sub">6 pits · 4 stones</span>
+      </button>
+      <button class="preset-btn" id="pre-oware" onclick="applyPreset('oware')">
+        <span class="preset-name">Oware</span>
+        <span class="preset-sub">6 pits · 4 · no store</span>
+      </button>
+      <button class="preset-btn" id="pre-quick" onclick="applyPreset('quick')">
+        <span class="preset-name">Quick</span>
+        <span class="preset-sub">4 pits · 3 stones</span>
+      </button>
+      <button class="preset-btn" id="pre-chaos" onclick="applyPreset('chaos')">
+        <span class="preset-name">Chaos</span>
+        <span class="preset-sub">8 pits · 6 · relay</span>
+      </button>
+    </div>
+
+    <div class="settings-body">
+
+      <!-- Board -->
+      <div class="settings-section">
+        <div class="section-label">Board</div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="Number of pockets on each side (3–10).">Pockets per side</span>
+          </div>
+          <div class="slider-wrap">
+            <input type="range" id="s-pits" min="3" max="10" value="6" oninput="syncSlider('pits')">
+            <span class="slider-val" id="v-pits">6</span>
+          </div>
+        </div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="Stones placed in every pocket at game start.">Starting stones</span>
+          </div>
+          <div class="slider-wrap">
+            <input type="range" id="s-stones" min="1" max="10" value="4" oninput="syncSlider('stones')">
+            <span class="slider-val" id="v-stones">4</span>
+          </div>
+        </div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="Sow stones counter-clockwise (standard) or let each player choose direction per turn.">Sow direction</span>
+          </div>
+          <select id="s-dir">
+            <option value="ccw">Counter-clockwise</option>
+            <option value="choose">Player's choice</option>
+          </select>
+        </div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="Stones are dropped into the opponent's store too (off by default, as in standard Kalah).">Sow into opponent's store</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="s-sowStore" onchange="onSettingChange()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
       </div>
-      <!-- Player row (pockets 0–5, left→right) -->
-      <div class="pockets-row" id="player-row">
-        <div class="pocket" id="p0"  data-idx="0"  onclick="handleClick(0)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p1"  data-idx="1"  onclick="handleClick(1)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p2"  data-idx="2"  onclick="handleClick(2)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p3"  data-idx="3"  onclick="handleClick(3)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p4"  data-idx="4"  onclick="handleClick(4)"><span class="pocket-num"></span></div>
-        <div class="pocket" id="p5"  data-idx="5"  onclick="handleClick(5)"><span class="pocket-num"></span></div>
+
+      <!-- Capture rules -->
+      <div class="settings-section">
+        <div class="section-label">Captures</div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="Standard: last stone lands in your own empty pocket — you steal that stone + all stones in the opposite pocket.">Capture rule</span>
+          </div>
+          <select id="s-capture">
+            <option value="standard">Standard</option>
+            <option value="always">Always (even if empty opposite)</option>
+            <option value="both-sides">Both sides can capture</option>
+            <option value="none">Disabled</option>
+          </select>
+        </div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="Grand Slam: if a move would capture every opponent stone, the move is forbidden to prevent a sweep.">Block grand slams</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="s-grandSlam" onchange="onSettingChange()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Extra turns -->
+      <div class="settings-section">
+        <div class="section-label">Extra turns</div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="When does the last stone landing in your own store grant another turn?">Extra turn rule</span>
+          </div>
+          <select id="s-extra">
+            <option value="always">Always</option>
+            <option value="never">Never</option>
+            <option value="first">First turn only</option>
+          </select>
+        </div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="Maximum consecutive extra turns in a row before the turn automatically passes. 0 = unlimited.">Max consecutive extras</span>
+          </div>
+          <div class="slider-wrap">
+            <input type="range" id="s-maxExtra" min="0" max="6" value="0" oninput="syncSlider('maxExtra')">
+            <span class="slider-val" id="v-maxExtra">∞</span>
+          </div>
+        </div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="If last stone lands in an empty pit on your side (no capture triggered), you get an extra turn instead.">Extra turn on empty land</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="s-extraEmpty" onchange="onSettingChange()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- End-game -->
+      <div class="settings-section">
+        <div class="section-label">End-game</div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="has-tip" data-tip="What happens to stones remaining when one side empties?">When a side empties</span>
+          </div>
+          <select id="s-endRule">
+            <option value="sweep">Both sides sweep to stores</option>
+            <option value="self-sweep">Emptier sweeps own remainder</option>
+            <option value="lose">Remaining stones are lost</option>
+            <option value="continue">Keep playing until both empty</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- AI -->
+      <div class="settings-section">
+        <div class="section-label">AI opponent</div>
+
+        <div class="ctrl-row">
+          <div class="ctrl-label">Difficulty</div>
+          <select id="s-diff">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Advanced toggle -->
+      <div class="advanced-toggle" id="adv-toggle" onclick="toggleAdvanced()">
+        <span class="chevron">▶</span> Advanced options
+      </div>
+      <div class="advanced-section" id="adv-section">
+
+        <!-- Relay sowing -->
+        <div class="settings-section">
+          <div class="section-label">Relay sowing</div>
+          <div class="ctrl-row">
+            <div class="ctrl-label">
+              <span class="has-tip" data-tip="If the last stone lands in a non-empty pocket, pick up all those stones and keep sowing. Creates chains.">Enable relay sowing</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="s-relay" onchange="onSettingChange()">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Asymmetric start -->
+        <div class="settings-section">
+          <div class="section-label">Starting layout</div>
+          <div class="ctrl-row">
+            <div class="ctrl-label">
+              <span class="has-tip" data-tip="Randomly vary starting stones per pocket (±1 of base count).">Random asymmetric start</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="s-asymmetric" onchange="onSettingChange()">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-label">
+              <span class="has-tip" data-tip="Player gets this many fewer stones than normal (0 = no handicap). Balances skill differences.">Player handicap (fewer stones)</span>
+            </div>
+            <div class="slider-wrap">
+              <input type="range" id="s-handicap" min="0" max="4" value="0" oninput="syncSlider('handicap')">
+              <span class="slider-val" id="v-handicap">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Locked pockets -->
+        <div class="settings-section">
+          <div class="section-label">Locked pockets</div>
+          <div class="ctrl-row">
+            <div class="ctrl-label">
+              <span class="has-tip" data-tip="Number of random pockets per side that can receive stones but cannot be picked.">Locked pockets per side</span>
+            </div>
+            <div class="slider-wrap">
+              <input type="range" id="s-locked" min="0" max="3" value="0" oninput="syncSlider('locked')">
+              <span class="slider-val" id="v-locked">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Store multiplier -->
+        <div class="settings-section">
+          <div class="section-label">Scoring</div>
+          <div class="ctrl-row">
+            <div class="ctrl-label">
+              <span class="has-tip" data-tip="Stones that land directly in the store score this multiplier at end. E.g. 2× means each direct-store stone counts as 2.">Store landing multiplier</span>
+            </div>
+            <select id="s-storeMulti">
+              <option value="1">1× (standard)</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2×</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Turn timer -->
+        <div class="settings-section">
+          <div class="section-label">Turn timer</div>
+          <div class="ctrl-row">
+            <div class="ctrl-label">
+              <span class="has-tip" data-tip="Seconds per turn. On timeout a random valid move is made automatically. 0 = off.">Time limit (seconds)</span>
+            </div>
+            <select id="s-timer">
+              <option value="0">Off</option>
+              <option value="10">10 s</option>
+              <option value="20">20 s</option>
+              <option value="30">30 s</option>
+              <option value="60">60 s</option>
+            </select>
+          </div>
+        </div>
+
+      </div><!-- /advanced-section -->
+
+    </div><!-- /settings-body -->
+
+    <div style="padding:14px 16px; border-top:1px solid var(--panel-bd);">
+      <button class="btn primary" style="width:100%;" onclick="startGame()">Start game</button>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════
+       GAME AREA
+  ════════════════════════════════════════════════ -->
+  <div class="game-area">
+
+    <div class="status-bar">
+      <div id="status-text" class="your-turn">Configure your game and press Start.</div>
+      <div class="status-right">
+        <div class="timer-badge" id="timer-badge">—</div>
       </div>
     </div>
 
-    <!-- Player store (right on board = store 6) -->
-    <div class="store" id="store-player">
-      <div class="store-count" id="store-player-count">0</div>
-      <div class="store-label">You</div>
+    <!-- Board (live preview + game) -->
+    <div class="board-wrap" id="board-wrap">
+      <div class="board-grid" id="board-grid">
+        <div class="store" id="store-ai">
+          <div class="store-count" id="sc-ai">0</div>
+          <div class="store-lbl">AI</div>
+        </div>
+        <div class="pockets-wrap">
+          <div class="pockets-row" id="ai-row"></div>
+          <div class="pockets-row" id="player-row"></div>
+        </div>
+        <div class="store" id="store-player">
+          <div class="store-count" id="sc-player">0</div>
+          <div class="store-lbl">You</div>
+        </div>
+      </div>
     </div>
+
+    <div id="score-summary"></div>
+
+    <div class="controls-bar">
+      <button class="btn" onclick="startGame()">New game</button>
+      <button class="btn" onclick="undoMove()" id="btn-undo">Undo</button>
+    </div>
+
+    <div class="move-log-wrap">
+      <div class="move-log-toggle" onclick="toggleLog()">▸ Move log</div>
+      <div id="move-log"></div>
+    </div>
+
   </div>
-</div>
-
-<div id="score-summary"></div>
-
-<div class="controls">
-  <div class="diff-selector">
-    <span>AI:</span>
-    <button class="diff-btn active" id="diff-easy"   onclick="setDifficulty('easy')">Easy</button>
-    <button class="diff-btn"        id="diff-medium" onclick="setDifficulty('medium')">Medium</button>
-    <button class="diff-btn"        id="diff-hard"   onclick="setDifficulty('hard')">Hard</button>
-  </div>
-  <button class="primary" onclick="initGame()">New Game</button>
-</div>
-
-<div class="rules-toggle" onclick="toggleRules()">▸ How to play</div>
-<div class="rules-panel" id="rules-panel">
-  <h3>Rules of Mancala</h3>
-  <ul>
-    <li><strong>Board:</strong> 6 pockets per side + 1 store (Mancala) each.</li>
-    <li><strong>Start:</strong> 4 stones in each pocket.</li>
-    <li><strong>Move:</strong> Pick any of your pockets (bottom row). Stones are distributed counter-clockwise, one per pocket — including your own store but <em>not</em> the opponent's store.</li>
-    <li><strong>Extra turn:</strong> If the last stone lands in your store, you go again.</li>
-    <li><strong>Capture:</strong> If the last stone lands in an empty pocket on your side, you capture that stone plus all stones in the opposite pocket — all go to your store.</li>
-    <li><strong>End:</strong> When one side is empty, the other player collects all remaining stones. Most stones in store wins.</li>
-  </ul>
 </div>
 
 <script>
-// ─── GAME STATE ─────────────────────────────────────────────────────────────
-// Indices: 0–5 player pockets, 6 player store, 7–12 AI pockets, 13 AI store
-const PLAYER_STORE = 6;
-const AI_STORE     = 13;
-let board        = [];
-let currentTurn  = 'player'; // 'player' | 'ai'
-let gameOver     = false;
-let difficulty   = 'easy';
-let aiTimeout    = null;
+'use strict';
 
-// ─── INIT ────────────────────────────────────────────────────────────────────
-function initGame() {
-  clearTimeout(aiTimeout);
-  board = [4,4,4,4,4,4, 0, 4,4,4,4,4,4, 0];
-  currentTurn = 'player';
-  gameOver    = false;
-  document.getElementById('score-summary').style.display = 'none';
-  render();
-  setStatus('player-turn', 'Your turn — pick a pocket');
+// ════════════════════════════════════════════════════════
+//  CONFIG — read from UI
+// ════════════════════════════════════════════════════════
+function getConfig() {
+  const pits        = +document.getElementById('s-pits').value;
+  const stonesBase  = +document.getElementById('s-stones').value;
+  const dir         = document.getElementById('s-dir').value;
+  const sowStore    = document.getElementById('s-sowStore').checked;
+  const captureRule = document.getElementById('s-capture').value;
+  const grandSlam   = document.getElementById('s-grandSlam').checked;
+  const extraRule   = document.getElementById('s-extra').value;
+  const maxExtraRaw = +document.getElementById('s-maxExtra').value;
+  const maxExtra    = maxExtraRaw === 0 ? Infinity : maxExtraRaw;
+  const extraEmpty  = document.getElementById('s-extraEmpty').checked;
+  const endRule     = document.getElementById('s-endRule').value;
+  const difficulty  = document.getElementById('s-diff').value;
+  const relay       = document.getElementById('s-relay').checked;
+  const asymmetric  = document.getElementById('s-asymmetric').checked;
+  const handicap    = +document.getElementById('s-handicap').value;
+  const lockedN     = +document.getElementById('s-locked').value;
+  const storeMulti  = parseFloat(document.getElementById('s-storeMulti').value);
+  const timerSec    = +document.getElementById('s-timer').value;
+
+  // Board indices:
+  // 0..(pits-1)       = player pockets
+  // pits              = player store
+  // (pits+1)..(2*pits) = AI pockets
+  // 2*pits+1           = AI store
+  const PSTORE = pits;
+  const ASTORE = 2 * pits + 1;
+  const TOTAL  = 2 * pits + 2;
+
+  return { pits, stonesBase, dir, sowStore, captureRule, grandSlam,
+           extraRule, maxExtra, extraEmpty, endRule, difficulty,
+           relay, asymmetric, handicap, lockedN, storeMulti, timerSec,
+           PSTORE, ASTORE, TOTAL };
 }
 
-// ─── RENDER ──────────────────────────────────────────────────────────────────
-function render(lastLanded = -1) {
-  // Stores
-  document.getElementById('store-player-count').textContent = board[PLAYER_STORE];
-  document.getElementById('store-ai-count').textContent     = board[AI_STORE];
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let cfg         = null;
+let board       = [];
+let history     = [];          // for undo
+let lockedPits  = { player:[], ai:[] };
+let storeLanded = { player:0, ai:0 };   // tracks direct-store lands for multiplier
+let turn        = 'player';
+let gameActive  = false;
+let extraCount  = 0;
+let aiTimer     = null;
+let clockTimer  = null;
+let clockLeft   = 0;
+let moveLog     = [];
+let choiceDir   = 'ccw';       // used when dir === 'choose'
+let choosingDir = false;
 
-  // Pockets 0–5 (player) and 7–12 (AI)
-  const allPockets = [0,1,2,3,4,5,7,8,9,10,11,12];
-  const isPlayerTurn = currentTurn === 'player' && !gameOver;
+// ════════════════════════════════════════════════════════
+//  PRESETS
+// ════════════════════════════════════════════════════════
+const PRESETS = {
+  classic: {
+    's-pits':6,'s-stones':4,'s-dir':'ccw','s-sowStore':false,
+    's-capture':'standard','s-grandSlam':false,'s-extra':'always','s-maxExtra':0,
+    's-extraEmpty':false,'s-endRule':'sweep','s-relay':false,'s-asymmetric':false,
+    's-handicap':0,'s-locked':0,'s-storeMulti':'1','s-timer':0
+  },
+  oware: {
+    's-pits':6,'s-stones':4,'s-dir':'ccw','s-sowStore':true,
+    's-capture':'both-sides','s-grandSlam':true,'s-extra':'never','s-maxExtra':0,
+    's-extraEmpty':false,'s-endRule':'continue','s-relay':false,'s-asymmetric':false,
+    's-handicap':0,'s-locked':0,'s-storeMulti':'1','s-timer':0
+  },
+  quick: {
+    's-pits':4,'s-stones':3,'s-dir':'ccw','s-sowStore':false,
+    's-capture':'standard','s-grandSlam':false,'s-extra':'always','s-maxExtra':2,
+    's-extraEmpty':false,'s-endRule':'sweep','s-relay':false,'s-asymmetric':false,
+    's-handicap':0,'s-locked':0,'s-storeMulti':'1','s-timer':20
+  },
+  chaos: {
+    's-pits':8,'s-stones':6,'s-dir':'choose','s-sowStore':false,
+    's-capture':'both-sides','s-grandSlam':false,'s-extra':'always','s-maxExtra':0,
+    's-extraEmpty':true,'s-endRule':'lose','s-relay':true,'s-asymmetric':true,
+    's-handicap':0,'s-locked':1,'s-storeMulti':'2','s-timer':30
+  }
+};
 
-  allPockets.forEach(i => {
-    const el  = document.getElementById('p' + i);
-    const num = board[i];
-    const isPlayerPocket = i < 6;
-    const playable = isPlayerTurn && isPlayerPocket && num > 0;
+function applyPreset(name) {
+  const p = PRESETS[name];
+  for (const [id, val] of Object.entries(p)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (el.type === 'checkbox') el.checked = !!val;
+    else el.value = val;
+  }
+  syncAllSliders();
+  // highlight active preset
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pre-' + name).classList.add('active');
+  buildPreviewBoard();
+}
 
-    // Number label
-    el.querySelector('.pocket-num').textContent = num > 0 ? num : '·';
+function syncSlider(key) {
+  const el  = document.getElementById('s-' + key);
+  const val = +el.value;
+  const lbl = document.getElementById('v-' + key);
+  if (key === 'maxExtra') lbl.textContent = val === 0 ? '∞' : val;
+  else lbl.textContent = val;
+  // deselect preset if user tweaks manually
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  buildPreviewBoard();
+}
 
-    // Classes
-    el.className = 'pocket';
-    if (num === 0)    el.classList.add('empty');
-    if (playable)     el.classList.add('playable');
-    if (i === lastLanded) el.classList.add('last-landed');
-
-    // Stone dots (visual flair, max 12 shown)
-    let sv = el.querySelector('.stones-visual');
-    if (sv) sv.remove();
-    if (num > 0) {
-      const show = Math.min(num, 12);
-      sv = document.createElement('div');
-      sv.className = 'stones-visual';
-      for (let s = 0; s < show; s++) {
-        const d = document.createElement('div');
-        d.className = 'stone-dot';
-        sv.appendChild(d);
-      }
-      el.appendChild(sv);
-    }
+function syncAllSliders() {
+  ['pits','stones','maxExtra','handicap','locked'].forEach(k => {
+    const el  = document.getElementById('s-' + k);
+    const lbl = document.getElementById('v-' + k);
+    if (!el || !lbl) return;
+    const v = +el.value;
+    lbl.textContent = k === 'maxExtra' ? (v === 0 ? '∞' : v) : v;
   });
 }
 
-// ─── STATUS ──────────────────────────────────────────────────────────────────
-function setStatus(cls, text) {
-  const el = document.getElementById('status-text');
-  el.className = cls;
-  el.textContent = text;
+function onSettingChange() {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  buildPreviewBoard();
 }
 
-// ─── MANCALA LOGIC ───────────────────────────────────────────────────────────
-// Returns { board, extraTurn, captured }
-function makeMove(b, pit) {
-  b = [...b];
+function toggleAdvanced() {
+  const t = document.getElementById('adv-toggle');
+  const s = document.getElementById('adv-section');
+  t.classList.toggle('open');
+  s.classList.toggle('open');
+}
+
+function toggleLog() {
+  const el = document.getElementById('move-log');
+  const tg = document.querySelector('.move-log-toggle');
+  el.classList.toggle('open');
+  tg.textContent = (el.classList.contains('open') ? '▾' : '▸') + ' Move log';
+}
+
+// ════════════════════════════════════════════════════════
+//  LIVE PREVIEW BOARD (before game starts)
+// ════════════════════════════════════════════════════════
+function buildPreviewBoard() {
+  if (gameActive) return;
+  const c    = getConfig();
+  const fake = buildInitialBoard(c);
+  renderBoard(fake, c, -1, true);
+}
+
+// ════════════════════════════════════════════════════════
+//  BOARD INIT
+// ════════════════════════════════════════════════════════
+function buildInitialBoard(c) {
+  const b = new Array(c.TOTAL).fill(0);
+  for (let i = 0; i < c.pits; i++) {
+    let s = c.stonesBase;
+    if (c.asymmetric) s = Math.max(1, s + (Math.random() < 0.5 ? 1 : -1));
+    // player handicap
+    const playerStones = Math.max(1, s - (i < c.pits ? c.handicap : 0));
+    b[i]           = playerStones;          // player pockets
+    b[c.pits + 1 + i] = s;                 // AI pockets
+  }
+  b[c.PSTORE] = 0;
+  b[c.ASTORE] = 0;
+  return b;
+}
+
+function pickLockedPits(c) {
+  function rndSubset(arr, n) {
+    const a = [...arr]; for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i+1)); [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a.slice(0, n);
+  }
+  const pPits = Array.from({length: c.pits}, (_,i) => i);
+  const aPits = Array.from({length: c.pits}, (_,i) => c.pits + 1 + i);
+  return { player: rndSubset(pPits, c.lockedN), ai: rndSubset(aPits, c.lockedN) };
+}
+
+// ════════════════════════════════════════════════════════
+//  RENDER BOARD
+// ════════════════════════════════════════════════════════
+function pocketSize(pits) {
+  // Shrink pockets as count grows
+  if (pits <= 4)  return 78;
+  if (pits <= 6)  return 70;
+  if (pits <= 8)  return 60;
+  return 52;
+}
+
+function renderBoard(b, c, lastIdx, preview) {
+  const isPlayerTurn = !preview && gameActive && turn === 'player';
+  const ps   = pocketSize(c.pits);
+  const stH  = Math.round(ps * 2.1);
+
+  // Store height
+  ['store-ai','store-player'].forEach(id => {
+    document.getElementById(id).style.height = stH + 'px';
+  });
+
+  // Stores
+  const pScore = preview ? 0 : b[c.PSTORE];
+  const aScore = preview ? 0 : b[c.ASTORE];
+  document.getElementById('sc-player').textContent = pScore;
+  document.getElementById('sc-ai').textContent     = aScore;
+
+  // Pockets
+  const aiRow     = document.getElementById('ai-row');
+  const playerRow = document.getElementById('player-row');
+  aiRow.innerHTML = '';
+  playerRow.innerHTML = '';
+
+  // player pockets: 0..(pits-1)
+  for (let i = 0; i < c.pits; i++) {
+    const idx  = i;
+    const num  = b[idx];
+    const playable = isPlayerTurn && num > 0 && !lockedPits.player.includes(idx);
+    const locked   = lockedPits.player.includes(idx);
+    playerRow.appendChild(makePocket(idx, num, ps, playable, locked, idx === lastIdx));
+  }
+
+  // AI pockets: (pits+1)..(2*pits)
+  for (let i = 0; i < c.pits; i++) {
+    const idx  = c.pits + 1 + i;
+    const num  = b[idx];
+    const locked = lockedPits.ai.includes(idx);
+    aiRow.appendChild(makePocket(idx, num, ps, false, locked, idx === lastIdx));
+  }
+}
+
+function makePocket(idx, num, size, playable, locked, glow) {
+  const div = document.createElement('div');
+  div.className = 'pocket' + (playable ? ' playable' : '') + (num === 0 ? ' empty' : '') + (locked ? ' locked' : '') + (glow ? ' glow' : '');
+  div.style.width  = size + 'px';
+  div.style.height = size + 'px';
+  div.dataset.idx  = idx;
+  if (playable) {
+    div.onclick = () => {
+      if (cfg && cfg.dir === 'choose') promptDirection(idx);
+      else handleClick(idx, 'ccw');
+    };
+  }
+
+  // Stone dots
+  if (num > 0) {
+    const maxDots = 14;
+    const show    = Math.min(num, maxDots);
+    const dotSize = Math.max(4, Math.round(size * 0.1));
+    const sv = document.createElement('div');
+    sv.className = 'stones-vis';
+    for (let s = 0; s < show; s++) {
+      const d = document.createElement('div');
+      d.className = 'sdot';
+      d.style.width  = dotSize + 'px';
+      d.style.height = dotSize + 'px';
+      sv.appendChild(d);
+    }
+    div.appendChild(sv);
+  }
+
+  const lbl = document.createElement('span');
+  lbl.className = 'pocket-num';
+  lbl.textContent = num > 0 ? num : '·';
+  div.appendChild(lbl);
+  return div;
+}
+
+// ════════════════════════════════════════════════════════
+//  DIRECTION CHOOSER (for dir='choose' mode)
+// ════════════════════════════════════════════════════════
+function promptDirection(pitIdx) {
+  if (choosingDir) return;
+  choosingDir = true;
+  setStatus('your-turn', 'Choose direction: ← Counter-clockwise  or  Clockwise →');
+
+  function cleanup() {
+    document.removeEventListener('keydown', onKey);
+    choosingDir = false;
+  }
+
+  // Click on the pocket itself cycles direction; we use a temp overlay
+  const pocketEl = document.querySelector(`.pocket[data-idx="${pitIdx}"]`);
+  if (!pocketEl) { cleanup(); handleClick(pitIdx, 'ccw'); return; }
+
+  // Add temporary direction buttons overlay
+  let overlay = document.getElementById('dir-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'dir-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);gap:20px;';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `
+    <button class="btn primary" onclick="pickDir(${pitIdx},'ccw')">← Counter-clockwise</button>
+    <button class="btn primary" onclick="pickDir(${pitIdx},'cw')">Clockwise →</button>
+    <button class="btn" onclick="cancelDir()">Cancel</button>`;
+
+  function onKey(e) {
+    if (e.key === 'ArrowLeft')  { cleanup(); pickDir(pitIdx, 'ccw'); }
+    if (e.key === 'ArrowRight') { cleanup(); pickDir(pitIdx, 'cw');  }
+    if (e.key === 'Escape')     { cleanup(); cancelDir(); }
+  }
+  document.addEventListener('keydown', onKey);
+}
+
+window.pickDir    = (pit, dir) => { closeOverlay(); choosingDir = false; handleClick(pit, dir); };
+window.cancelDir  = () => { closeOverlay(); choosingDir = false; setStatus('your-turn', 'Your turn — pick a pocket'); };
+function closeOverlay() {
+  const o = document.getElementById('dir-overlay');
+  if (o) o.remove();
+}
+
+// ════════════════════════════════════════════════════════
+//  GAME FLOW
+// ════════════════════════════════════════════════════════
+function startGame() {
+  clearTimeout(aiTimer);
+  clearInterval(clockTimer);
+  closeOverlay();
+  choosingDir   = false;
+  cfg           = getConfig();
+  board         = buildInitialBoard(cfg);
+  lockedPits    = pickLockedPits(cfg);
+  storeLanded   = { player:0, ai:0 };
+  history       = [];
+  moveLog       = [];
+  turn          = 'player';
+  gameActive    = true;
+  extraCount    = 0;
+
+  document.getElementById('score-summary').style.display = 'none';
+  document.getElementById('move-log').innerHTML = '';
+  renderBoard(board, cfg, -1, false);
+  setStatus('your-turn', cfg.dir === 'choose' ? 'Your turn — pick a pocket, then choose direction' : 'Your turn — pick a pocket');
+  startClock();
+}
+
+// ════════════════════════════════════════════════════════
+//  CORE MOVE ENGINE
+// ════════════════════════════════════════════════════════
+function makeMove(b, pit, c, sl, dir) {
+  b  = [...b];
+  sl = { ...sl };
   let stones = b[pit];
   b[pit] = 0;
+
+  const isPlayerPit = pit < c.PSTORE;
+  const ownStore  = isPlayerPit ? c.PSTORE : c.ASTORE;
+  const skip      = c.sowStore ? -1 : (isPlayerPit ? c.ASTORE : c.PSTORE);
+
   let idx = pit;
-  const skip = (pit < PLAYER_STORE) ? AI_STORE : PLAYER_STORE;
+  const step  = dir === 'cw' ? -1 : 1;
+  const total = c.TOTAL;
 
   while (stones > 0) {
-    idx = (idx + 1) % 14;
+    idx = ((idx + step) % total + total) % total;
     if (idx === skip) continue;
     b[idx]++;
     stones--;
   }
 
-  // Extra turn if last stone lands in own store
-  const ownStore = (pit < PLAYER_STORE) ? PLAYER_STORE : AI_STORE;
-  let extraTurn = (idx === ownStore);
+  // Track direct store landings for multiplier
+  if (idx === ownStore) sl[isPlayerPit ? 'player' : 'ai']++;
 
-  // Capture: last in empty own pit across from opponent stones
-  const isPlayerPit = pit < PLAYER_STORE;
-  const landedInOwnSide = isPlayerPit ? (idx >= 0 && idx < 6) : (idx >= 7 && idx <= 12);
+  // Relay sowing: if last stone lands in non-empty (and not store), pick up and keep going
+  if (c.relay && idx !== c.PSTORE && idx !== c.ASTORE && b[idx] > 1) {
+    const relayResult = makeMove(b, idx, c, sl, dir);
+    return { board: relayResult.board, extraTurn: relayResult.extraTurn,
+             lastIdx: relayResult.lastIdx, sl: relayResult.sl };
+  }
 
-  if (!extraTurn && landedInOwnSide && b[idx] === 1) {
-    const opposite = 12 - idx; // mirror index
-    if (b[opposite] > 0) {
-      const ownStoreIdx = isPlayerPit ? PLAYER_STORE : AI_STORE;
-      b[ownStoreIdx] += b[opposite] + 1;
-      b[opposite] = 0;
-      b[idx]      = 0;
+  // Extra turn: last stone in own store
+  let extraTurn = false;
+  if (c.extraRule === 'always' && idx === ownStore) extraTurn = true;
+  if (c.extraRule === 'first'  && idx === ownStore && extraCount === 0) extraTurn = true;
+
+  // Extra turn on landing in own empty pit (before capture)
+  const landedOwnSide = isPlayerPit ? (idx >= 0 && idx < c.pits) : (idx > c.PSTORE && idx < c.ASTORE);
+  if (!extraTurn && c.extraEmpty && landedOwnSide && b[idx] === 1) extraTurn = true;
+
+  // Capture logic
+  if (!extraTurn && idx !== c.PSTORE && idx !== c.ASTORE) {
+    const playerLand = idx < c.pits;
+    const aiLand     = idx > c.PSTORE && idx < c.ASTORE;
+    const landOwnSide = isPlayerPit ? playerLand : aiLand;
+    const captureOwnSide  = landOwnSide;
+    const captureBothSide = c.captureRule === 'both-sides';
+
+    if (captureOwnSide || captureBothSide) {
+      if (b[idx] === 1) { // just landed making it 1
+        const opposite = c.ASTORE - idx; // mirror: 0↔(2p+1), i↔(2p+1-i)
+        const oppInRange = opposite > 0 && opposite < c.ASTORE && opposite !== c.PSTORE;
+        const doCapture  = (c.captureRule !== 'none') &&
+                           (c.captureRule === 'always' || b[opposite] > 0) &&
+                           oppInRange;
+
+        if (doCapture) {
+          // Grand slam check
+          const captureTotal = b[opposite] + 1;
+          const allOppStones = isPlayerPit
+            ? [].concat(Array.from({length:c.pits}, (_,i)=>c.pits+1+i).map(x=>b[x]))
+            : Array.from({length:c.pits}, (_,i)=>b[i]);
+          const grandSlam = captureTotal >= allOppStones.reduce((a,v)=>a+v,0) + b[opposite];
+
+          if (!(c.grandSlam && grandSlam)) {
+            b[ownStore] += captureTotal;
+            b[opposite] = 0;
+            b[idx]      = 0;
+          }
+        }
+      }
     }
   }
 
-  return { board: b, extraTurn, lastIdx: idx };
+  return { board: b, extraTurn, lastIdx: idx, sl };
 }
 
-function isGameOver(b) {
-  const playerEmpty = b.slice(0,6).every(x => x === 0);
-  const aiEmpty     = b.slice(7,13).every(x => x === 0);
+// ════════════════════════════════════════════════════════
+//  GAME OVER CHECK
+// ════════════════════════════════════════════════════════
+function checkOver(b, c) {
+  const playerEmpty = Array.from({length:c.pits},(_,i)=>i).every(i => b[i] === 0);
+  const aiEmpty     = Array.from({length:c.pits},(_,i)=>c.pits+1+i).every(i => b[i] === 0);
+
+  if (c.endRule === 'continue') return playerEmpty && aiEmpty;
   return playerEmpty || aiEmpty;
 }
 
-function finalizeBoard(b) {
+function finalizeBoard(b, c) {
   b = [...b];
-  const pSum = b.slice(0,6).reduce((a,v)=>a+v,0);
-  const aSum = b.slice(7,13).reduce((a,v)=>a+v,0);
-  b[PLAYER_STORE] += pSum;
-  b[AI_STORE]     += aSum;
-  for (let i = 0; i < 6; i++) b[i] = 0;
-  for (let i = 7; i <= 12; i++) b[i] = 0;
+  const playerSum = Array.from({length:c.pits},(_,i)=>i).reduce((a,i)=>a+b[i],0);
+  const aiSum     = Array.from({length:c.pits},(_,i)=>c.pits+1+i).reduce((a,i)=>a+b[i],0);
+
+  if (c.endRule === 'sweep' || c.endRule === 'continue') {
+    b[c.PSTORE] += playerSum;
+    b[c.ASTORE] += aiSum;
+    for (let i=0;i<c.pits;i++) b[i] = 0;
+    for (let i=c.pits+1;i<c.ASTORE;i++) b[i] = 0;
+
+  } else if (c.endRule === 'self-sweep') {
+    const playerEmpty = Array.from({length:c.pits},(_,i)=>i).every(i=>b[i]===0);
+    if (playerEmpty) { b[c.PSTORE] += playerSum; for(let i=0;i<c.pits;i++)b[i]=0; }
+    else             { b[c.ASTORE] += aiSum;     for(let i=c.pits+1;i<c.ASTORE;i++)b[i]=0; }
+
+  } else if (c.endRule === 'lose') {
+    // stones left on board are lost
+    for (let i=0;i<c.pits;i++) b[i] = 0;
+    for (let i=c.pits+1;i<c.ASTORE;i++) b[i] = 0;
+  }
+
+  // Apply store multiplier to direct landings
+  if (c.storeMulti !== 1) {
+    b[c.PSTORE] += Math.round(storeLanded.player * (c.storeMulti - 1));
+    b[c.ASTORE] += Math.round(storeLanded.ai     * (c.storeMulti - 1));
+  }
+
   return b;
 }
 
-// ─── PLAYER CLICK ────────────────────────────────────────────────────────────
-function handleClick(pit) {
-  if (gameOver || currentTurn !== 'player') return;
-  if (pit >= PLAYER_STORE) return; // can't click AI pockets
+// ════════════════════════════════════════════════════════
+//  PLAYER INPUT
+// ════════════════════════════════════════════════════════
+window.handleClick = function(pit, dir) {
+  if (!gameActive || turn !== 'player') return;
+  if (pit >= cfg.PSTORE) return;
   if (board[pit] === 0) return;
+  if (lockedPits.player.includes(pit)) return;
 
-  const { board: nb, extraTurn, lastIdx } = makeMove(board, pit);
+  stopClock();
+  saveHistory();
+
+  const { board: nb, extraTurn, lastIdx, sl: newSL } = makeMove(board, pit, cfg, storeLanded, dir || 'ccw');
+  storeLanded = newSL;
   board = nb;
+  addLog(`You: pit ${pit+1}${dir==='cw'?' (→)':''} → ${extraTurn ? 'extra turn' : 'AI turn'}`);
 
-  if (isGameOver(board)) {
-    board = finalizeBoard(board);
-    render(lastIdx);
-    endGame();
-    return;
-  }
+  if (checkOver(board, cfg)) { board = finalizeBoard(board, cfg); renderBoard(board, cfg, lastIdx, false); endGame(); return; }
 
-  if (extraTurn) {
-    render(lastIdx);
-    setStatus('player-turn', 'Extra turn! Last stone landed in your store.');
+  if (extraTurn && (cfg.extraRule !== 'never')) {
+    extraCount++;
+    if (extraCount >= cfg.maxExtra) {
+      extraCount = 0;
+      turn = 'ai';
+      renderBoard(board, cfg, lastIdx, false);
+      setStatus('ai-turn', 'Max extra turns reached — AI\'s turn.');
+      scheduleAI();
+    } else {
+      renderBoard(board, cfg, lastIdx, false);
+      setStatus('extra-turn', `Extra turn! (${cfg.maxExtra === Infinity ? '' : extraCount + '/' + cfg.maxExtra})`);
+      startClock();
+    }
   } else {
-    currentTurn = 'ai';
-    render(lastIdx);
+    extraCount = 0;
+    turn = 'ai';
+    renderBoard(board, cfg, lastIdx, false);
     setStatus('ai-turn', 'AI is thinking…');
-    aiTimeout = setTimeout(aiMove, 900);
+    scheduleAI();
   }
+};
+
+// ════════════════════════════════════════════════════════
+//  AI
+// ════════════════════════════════════════════════════════
+function scheduleAI() {
+  aiTimer = setTimeout(runAI, 750 + Math.random() * 500);
 }
 
-// ─── AI ──────────────────────────────────────────────────────────────────────
-function getAiPits() {
-  return [7,8,9,10,11,12].filter(i => board[i] > 0);
+function getValidAIPits(b, c) {
+  return Array.from({length:c.pits},(_,i)=>c.pits+1+i)
+    .filter(i => b[i] > 0 && !lockedPits.ai.includes(i));
 }
 
-// Score a board from AI's perspective
-function scoreBoard(b) {
-  return b[AI_STORE] - b[PLAYER_STORE];
+function scoreBoard(b, c) {
+  return b[c.ASTORE] - b[c.PSTORE];
 }
 
-function minimax(b, depth, alpha, beta, maximizing) {
-  if (depth === 0 || isGameOver(b)) {
-    if (isGameOver(b)) b = finalizeBoard(b);
-    return scoreBoard(b);
+function minimax(b, depth, alpha, beta, maximizing, c, sl) {
+  if (depth === 0 || checkOver(b,c)) {
+    const fb = checkOver(b,c) ? finalizeBoard(b,c) : b;
+    return scoreBoard(fb, c);
   }
-
   if (maximizing) {
     let best = -Infinity;
-    const pits = [7,8,9,10,11,12].filter(i => b[i] > 0);
-    if (pits.length === 0) return scoreBoard(b);
+    const pits = getValidAIPits(b, c);
+    if (!pits.length) return scoreBoard(b, c);
     for (const pit of pits) {
-      const { board: nb, extraTurn } = makeMove(b, pit);
-      const score = minimax(nb, depth - (extraTurn ? 0 : 1), alpha, beta, extraTurn ? true : false);
-      best = Math.max(best, score);
+      const { board:nb, extraTurn, sl:nsl } = makeMove(b, pit, c, sl, 'ccw');
+      const score = minimax(nb, depth - (extraTurn ? 0 : 1), alpha, beta, extraTurn || false, c, nsl);
+      best  = Math.max(best, score);
       alpha = Math.max(alpha, score);
       if (beta <= alpha) break;
     }
     return best;
   } else {
     let best = Infinity;
-    const pits = [0,1,2,3,4,5].filter(i => b[i] > 0);
-    if (pits.length === 0) return scoreBoard(b);
+    const pits = Array.from({length:c.pits},(_,i)=>i).filter(i => b[i]>0 && !lockedPits.player.includes(i));
+    if (!pits.length) return scoreBoard(b, c);
     for (const pit of pits) {
-      const { board: nb, extraTurn } = makeMove(b, pit);
-      const score = minimax(nb, depth - (extraTurn ? 0 : 1), alpha, beta, extraTurn ? true : true);
+      const { board:nb, extraTurn, sl:nsl } = makeMove(b, pit, c, sl, 'ccw');
+      const score = minimax(nb, depth - (extraTurn ? 0 : 1), alpha, beta, extraTurn ? false : false, c, nsl);
       best = Math.min(best, score);
       beta = Math.min(beta, score);
       if (beta <= alpha) break;
@@ -615,103 +1441,192 @@ function minimax(b, depth, alpha, beta, maximizing) {
   }
 }
 
-function aiMove() {
-  if (gameOver) return;
-  const pits = getAiPits();
-  if (pits.length === 0) { endGame(); return; }
+function runAI() {
+  if (!gameActive || turn !== 'ai') return;
+  const pits = getValidAIPits(board, cfg);
+  if (!pits.length) { endGame(); return; }
 
   let chosen;
+  const diff = cfg.difficulty;
 
-  if (difficulty === 'easy') {
-    // Random with a bias toward extra-turn moves
-    const extraTurnMoves = pits.filter(i => {
-      const { extraTurn } = makeMove(board, i);
-      return extraTurn;
-    });
-    chosen = extraTurnMoves.length > 0 && Math.random() < 0.5
-      ? extraTurnMoves[Math.floor(Math.random() * extraTurnMoves.length)]
+  if (diff === 'easy') {
+    const extMoves = pits.filter(i => makeMove(board,i,cfg,storeLanded,'ccw').extraTurn);
+    chosen = extMoves.length > 0 && Math.random() < 0.45
+      ? extMoves[Math.floor(Math.random() * extMoves.length)]
       : pits[Math.floor(Math.random() * pits.length)];
 
-  } else if (difficulty === 'medium') {
-    // 1-ply: greedy
-    let best = -Infinity, bestPit = pits[0];
+  } else if (diff === 'medium') {
+    let best = -Infinity;
+    chosen = pits[0];
     for (const pit of pits) {
-      const { board: nb, extraTurn } = makeMove(board, pit);
-      let s = scoreBoard(nb) + (extraTurn ? 2 : 0);
-      if (s > best) { best = s; bestPit = pit; }
+      const { board:nb, extraTurn } = makeMove(board, pit, cfg, storeLanded, 'ccw');
+      const s = scoreBoard(nb, cfg) + (extraTurn ? 3 : 0);
+      if (s > best) { best = s; chosen = pit; }
     }
-    chosen = bestPit;
 
   } else {
-    // Hard: minimax depth 6
-    let best = -Infinity, bestPit = pits[0];
+    const depth = cfg.pits <= 5 ? 7 : (cfg.pits <= 7 ? 5 : 4);
+    let best = -Infinity;
+    chosen = pits[0];
     for (const pit of pits) {
-      const { board: nb, extraTurn } = makeMove(board, pit);
-      const score = minimax(nb, 6, -Infinity, Infinity, extraTurn);
-      if (score > best) { best = score; bestPit = pit; }
+      const { board:nb, extraTurn, sl:nsl } = makeMove(board, pit, cfg, storeLanded, 'ccw');
+      const score = minimax(nb, depth, -Infinity, Infinity, extraTurn, cfg, nsl);
+      if (score > best) { best = score; chosen = pit; }
     }
-    chosen = bestPit;
   }
 
-  const { board: nb, extraTurn, lastIdx } = makeMove(board, chosen);
-  board = nb;
+  // AI direction choice (always ccw; in 'choose' mode AI picks greedily)
+  let aiDir = 'ccw';
+  if (cfg.dir === 'choose') {
+    const sccw = scoreBoard(makeMove(board, chosen, cfg, storeLanded, 'ccw').board, cfg);
+    const scw  = scoreBoard(makeMove(board, chosen, cfg, storeLanded, 'cw').board, cfg);
+    aiDir = scw > sccw ? 'cw' : 'ccw';
+  }
 
-  if (isGameOver(board)) {
-    board = finalizeBoard(board);
-    render(lastIdx);
+  const { board:nb, extraTurn, lastIdx, sl:nsl } = makeMove(board, chosen, cfg, storeLanded, aiDir);
+  storeLanded = nsl;
+  board = nb;
+  addLog(`AI: pit ${chosen - cfg.pits}${aiDir==='cw'?' (→)':''}  → ${extraTurn ? 'extra turn' : 'your turn'}`);
+
+  if (checkOver(board, cfg)) {
+    board = finalizeBoard(board, cfg);
+    renderBoard(board, cfg, lastIdx, false);
     endGame();
     return;
   }
 
-  if (extraTurn) {
-    render(lastIdx);
-    setStatus('ai-turn', 'AI gets an extra turn…');
-    aiTimeout = setTimeout(aiMove, 1100);
+  if (extraTurn && cfg.extraRule !== 'never') {
+    extraCount++;
+    if (extraCount >= cfg.maxExtra) {
+      extraCount = 0;
+      turn = 'player';
+      renderBoard(board, cfg, lastIdx, false);
+      setStatus('your-turn', 'Max extra turns reached — your turn.');
+      startClock();
+    } else {
+      renderBoard(board, cfg, lastIdx, false);
+      setStatus('ai-turn', 'AI gets another turn…');
+      scheduleAI();
+    }
   } else {
-    currentTurn = 'player';
-    render(lastIdx);
-    setStatus('player-turn', 'Your turn — pick a pocket');
+    extraCount = 0;
+    turn = 'player';
+    renderBoard(board, cfg, lastIdx, false);
+    setStatus('your-turn', cfg.dir === 'choose' ? 'Your turn — pick a pocket, then choose direction' : 'Your turn — pick a pocket');
+    startClock();
   }
 }
 
-// ─── END GAME ────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  UNDO
+// ════════════════════════════════════════════════════════
+function saveHistory() {
+  history.push({ board:[...board], turn, extraCount, storeLanded:{...storeLanded} });
+  if (history.length > 10) history.shift();
+}
+
+window.undoMove = function() {
+  if (!gameActive || history.length === 0) return;
+  clearTimeout(aiTimer);
+  stopClock();
+  const prev = history.pop();
+  board       = prev.board;
+  turn        = 'player';
+  extraCount  = prev.extraCount;
+  storeLanded = prev.storeLanded;
+  moveLog.pop();
+  renderBoard(board, cfg, -1, false);
+  renderLog();
+  setStatus('your-turn', 'Move undone — your turn.');
+  startClock();
+};
+
+// ════════════════════════════════════════════════════════
+//  TIMER
+// ════════════════════════════════════════════════════════
+function startClock() {
+  stopClock();
+  if (!cfg || cfg.timerSec === 0 || turn !== 'player') return;
+  clockLeft = cfg.timerSec;
+  const badge = document.getElementById('timer-badge');
+  badge.classList.add('visible');
+  badge.classList.remove('urgent');
+  badge.textContent = clockLeft;
+  clockTimer = setInterval(() => {
+    clockLeft--;
+    badge.textContent = clockLeft;
+    if (clockLeft <= 5) badge.classList.add('urgent');
+    if (clockLeft <= 0) {
+      stopClock();
+      // auto-pick random valid move
+      const pits = Array.from({length:cfg.pits},(_,i)=>i)
+        .filter(i => board[i] > 0 && !lockedPits.player.includes(i));
+      if (pits.length) handleClick(pits[Math.floor(Math.random()*pits.length)], 'ccw');
+    }
+  }, 1000);
+}
+
+function stopClock() {
+  clearInterval(clockTimer);
+  const badge = document.getElementById('timer-badge');
+  badge.classList.remove('visible','urgent');
+}
+
+// ════════════════════════════════════════════════════════
+//  END GAME
+// ════════════════════════════════════════════════════════
 function endGame() {
-  gameOver = true;
-  const ps = board[PLAYER_STORE];
-  const as = board[AI_STORE];
-  let msg, cls;
-  if (ps > as)      { msg = 'You win!';  cls = 'game-over'; }
-  else if (as > ps) { msg = 'AI wins.';  cls = 'game-over ai-turn'; }
-  else              { msg = "It's a tie!"; cls = 'game-over'; }
+  gameActive = false;
+  stopClock();
+  clearTimeout(aiTimer);
+  const ps = board[cfg.PSTORE];
+  const as = board[cfg.ASTORE];
+  let msg;
+  if (ps > as)      msg = 'You win!';
+  else if (as > ps) msg = 'AI wins.';
+  else              msg = "It's a tie!";
 
-  setStatus(cls, msg);
+  setStatus('game-over', msg);
+  renderBoard(board, cfg, -1, false);
 
-  const summary = document.getElementById('score-summary');
-  summary.style.display = 'block';
-  summary.innerHTML = `You <span>${ps}</span> &nbsp;·&nbsp; AI <span>${as}</span>`;
+  const sum = document.getElementById('score-summary');
+  sum.style.display = 'block';
+  sum.innerHTML = `You <span class="hl">${ps}</span> &nbsp;–&nbsp; AI <span class="hl">${as}</span>`;
 
-  render();
+  addLog(`Game over: You ${ps} – AI ${as}. ${msg}`);
 }
 
-// ─── DIFFICULTY ──────────────────────────────────────────────────────────────
-function setDifficulty(d) {
-  difficulty = d;
-  ['easy','medium','hard'].forEach(x => {
-    document.getElementById('diff-' + x).classList.toggle('active', x === d);
-  });
-  initGame();
+// ════════════════════════════════════════════════════════
+//  STATUS & LOG
+// ════════════════════════════════════════════════════════
+function setStatus(cls, txt) {
+  const el = document.getElementById('status-text');
+  el.className = cls;
+  el.textContent = txt;
 }
 
-// ─── RULES TOGGLE ────────────────────────────────────────────────────────────
-function toggleRules() {
-  const p  = document.getElementById('rules-panel');
-  const t  = document.querySelector('.rules-toggle');
-  const open = p.classList.toggle('open');
-  t.textContent = (open ? '▾' : '▸') + ' How to play';
+function addLog(line) {
+  moveLog.push(line);
+  renderLog();
+}
+function renderLog() {
+  const el = document.getElementById('move-log');
+  el.innerHTML = moveLog.slice().reverse().map(l => `<div>${l}</div>`).join('');
 }
 
-// ─── START ───────────────────────────────────────────────────────────────────
-initGame();
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+// Expose for HTML event handlers
+window.applyPreset   = applyPreset;
+window.syncSlider    = syncSlider;
+window.onSettingChange = onSettingChange;
+window.toggleAdvanced = toggleAdvanced;
+window.toggleLog      = toggleLog;
+window.startGame      = startGame;
+
+// Initial live preview
+buildPreviewBoard();
 </script>
 </body>
 </html>
